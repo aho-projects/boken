@@ -1,0 +1,41 @@
+<!--
+  Boken iframe auto-resize listener.
+  Paste this ONCE per WordPress page that contains a Boken iframe embed.
+  It listens for height messages from the embed and resizes any iframe
+  whose src starts with the BOKEN_HOST below.
+
+  Replace BOKEN_HOST with your actual Vercel URL after deploying, e.g.
+    https://boken-live.vercel.app
+-->
+<script>
+(function () {
+  var BOKEN_HOST = 'https://boken-live.vercel.app'; // ← CHANGE ME after deploy
+  function attach() {
+    var iframes = document.querySelectorAll('iframe[src^="' + BOKEN_HOST + '"]');
+    iframes.forEach(function (f) {
+      if (!f.dataset.bokenAttached) {
+        f.dataset.bokenAttached = '1';
+        f.style.border = '0';
+        f.style.width = '100%';
+        f.scrolling = 'no';
+        f.loading = 'lazy';
+      }
+    });
+  }
+  window.addEventListener('message', function (e) {
+    if (!e || !e.data) return;
+    if (e.data.type !== 'boken-resize') return;
+    var iframes = document.querySelectorAll('iframe[src^="' + BOKEN_HOST + '"]');
+    iframes.forEach(function (f) {
+      if (f.contentWindow === e.source) {
+        f.style.height = (e.data.height + 4) + 'px';
+      }
+    });
+  });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attach);
+  } else {
+    attach();
+  }
+})();
+</script>

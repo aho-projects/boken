@@ -14,6 +14,16 @@ type Spot = {
   distance: number;
 };
 
+type Suggestion = {
+  place_id: number;
+  lat: string;
+  lon: string;
+  display_name: string;
+  name?: string;
+  type?: string;
+  class?: string;
+};
+
 const KIND_LABEL: Record<SpotKind, string> = {
   park: "Park / grøntområde",
   skog: "Skog / trær",
@@ -57,19 +67,60 @@ function makeDivIcon(L: typeof import("leaflet"), kind: SpotKind | "school" | "y
   });
 }
 
+/** Try multiple Nominatim queries. Returns the first non-empty result list. */
+async function nominatimSearch(school: string, city: string, limit = 6): Promise<Suggestion[]> {
+  const variants: string[] = [];
+  const trimmedSchool = school.trim();
+  const trimmedCity = city.trim();
+
+  if (trimmedSchool) {
+    variants.push([trimmedSchool, trimmedCity].filter(Boolean).join(", "));
+    // Norwegian: OSM mostly tags schools as "X skole" not "X ungdomsskole"
+    if (/ungdomsskole|barneskole|videregående/i.test(trimmedSchool)) {
+      const simpler = trimmedSchool.replace(/ungdomsskole|barneskole|videregående( skole)?/i, "skole").trim();
+      variants.push([simpler, trimmedCity].filter(Boolean).join(", "));
+    }
+    // Also try with just "skole" appended if not already
+    if (!/skole/i.test(trimmedSchool)) {
+      variants.push([`${trimmedSchool} skole`, trimmedCity].filter(Boolean).join(", "));
+    }
+  } else if (trimmedCity) {
+    variants.push(trimmedCity);
+  }
+
+  for (const q of variants) {
+    if (!q) continue;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=no&limit=${limit}&addressdetails=0`,
+        { headers: { "Accept-Language": "nb-NO" } },
+      );
+      if (!res.ok) continue;
+      const data = (await res.json()) as Suggestion[];
+      if (data.length > 0) return data;
+    } catch {
+      // try the next variant
+    }
+  }
+  return [];
+}
+
 export function AreaMap() {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<LeafletMap | null>(null);
   const schoolMarkerRef = useRef<Marker | null>(null);
   const spotsLayerRef = useRef<LayerGroup | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [LeafletModule, setLeafletModule] = useState<typeof import("leaflet") | null>(null);
-  const [status, setStatus] = useState<string>("Skriv inn skolen din, eller la oss bruke posisjonen din.");
+  const [status, setStatus] = useState<string>("Skriv inn skolen din, eller bruk «Finn meg» under.");
   const [busy, setBusy] = useState(false);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [filterType, setFilterType] = useState<"all" | "park" | "skog" | "vann">("all");
   const [radiusMinutes, setRadiusMinutes] = useState<10 | 20 | 30>(20);
   const [schoolName, setSchoolName] = useState("");
   const [schoolCity, setSchoolCity] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Init Leaflet
   useEffect(() => {
@@ -86,16 +137,30 @@ export function AreaMap() {
         attributionControl: true,
         scrollWheelZoom: false,
       });
+      // Replace Leaflet's default attribution prefix (which includes a Ukraine flag SVG)
+      // with a plain text credit.
+      map.attributionControl.setPrefix("<a href=\"https://leafletjs.com\" title=\"Leaflet\">Leaflet</a>");
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap",
-        maxZoom: 19,
+      // Stamen Watercolor — hand-painted aesthetic, free via Stadia Maps.
+      const apiSuffix = process.env.NEXT_PUBLIC_STADIA_API_KEY
+        ? `?api_key=${process.env.NEXT_PUBLIC_STADIA_API_KEY}`
+        : "";
+      L.tileLayer(`https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg${apiSuffix}`, {
+        attribution: "Map: © <a href=\"https://stadiamaps.com/\">Stadia Maps</a> · © <a href=\"https://stamen.com\">Stamen</a> · © <a href=\"https://openstreetmap.org/copyright\">OpenStreetMap</a>",
+        maxZoom: 16,
+        minZoom: 1,
+      }).addTo(map);
+      // Toner-lite label overlay so place names stay legible on the painted tiles
+      L.tileLayer(`https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png${apiSuffix}`, {
+        attribution: "",
+        maxZoom: 16,
+        opacity: 0.75,
+        pane: "overlayPane",
       }).addTo(map);
 
       spotsLayerRef.current = L.layerGroup().addTo(map);
       leafletMapRef.current = map;
 
-      // Resize fix after mount
       setTimeout(() => map.invalidateSize(), 100);
     })();
     return () => {
@@ -106,6 +171,24 @@ export function AreaMap() {
       }
     };
   }, []);
+
+  // Debounced autocomplete
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const q = schoolName.trim();
+    if (q.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      const found = await nominatimSearch(schoolName, schoolCity, 6);
+      setSuggestions(found);
+      setShowSuggestions(found.length > 0);
+    }, 450);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [schoolName, schoolCity]);
 
   const showSchoolAt = (L: typeof import("leaflet"), lat: number, lng: number, label = "Skolen") => {
     const map = leafletMapRef.current;
@@ -124,50 +207,71 @@ export function AreaMap() {
     const layer = spotsLayerRef.current;
     if (!layer) return;
     layer.clearLayers();
+    const schoolMarker = schoolMarkerRef.current;
     const visible = filterType === "all" ? allSpots : allSpots.filter((s) => s.kind === filterType);
     visible.forEach((spot, i) => {
+      // Dashed line from school → spot
+      if (schoolMarker) {
+        const schoolLatLng = schoolMarker.getLatLng();
+        L.polyline(
+          [
+            [schoolLatLng.lat, schoolLatLng.lng],
+            [spot.lat, spot.lng],
+          ],
+          {
+            color: "#1A1A1A",
+            weight: 2,
+            opacity: 0.7,
+            dashArray: "6 6",
+            lineCap: "round",
+          },
+        ).addTo(layer);
+      }
       const marker = L.marker([spot.lat, spot.lng], { icon: makeDivIcon(L, spot.kind, String(i + 1)) });
       marker.bindPopup(`<strong>${spot.name}</strong><br>${KIND_LABEL[spot.kind]}<br><em>~${Math.round(spot.distance)} m</em>`);
       marker.addTo(layer);
     });
   };
 
-  // Re-render markers when filter changes
   useEffect(() => {
     if (LeafletModule) renderSpots(LeafletModule, spots);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterType, spots, LeafletModule]);
 
+  async function pickSuggestion(s: Suggestion) {
+    if (!LeafletModule) return;
+    setShowSuggestions(false);
+    setSchoolName(s.name || s.display_name.split(",")[0]);
+    const lat = parseFloat(s.lat);
+    const lng = parseFloat(s.lon);
+    setBusy(true);
+    setStatus(`Viser kart rundt ${s.display_name}.`);
+    showSchoolAt(LeafletModule, lat, lng, s.display_name);
+    await fetchSpots(lat, lng);
+  }
+
   async function searchSchool(e: React.FormEvent) {
     e.preventDefault();
     if (!LeafletModule) return;
     const q = [schoolName, schoolCity].filter(Boolean).join(", ");
-    if (!q) {
+    if (!q.trim()) {
       setStatus("Skriv inn skolen din først.");
       return;
     }
     setBusy(true);
+    setShowSuggestions(false);
     setStatus(`Søker etter «${q}» …`);
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=no&limit=1`,
-        { headers: { "Accept-Language": "nb-NO" } },
-      );
-      const data = (await res.json()) as Array<{ lat: string; lon: string; display_name: string }>;
-      if (data.length === 0) {
-        setStatus(`Fant ikke «${q}». Prøv et annet navn eller bruk «Finn meg».`);
-        setBusy(false);
-        return;
-      }
-      const { lat, lon, display_name } = data[0];
-      const latNum = parseFloat(lat);
-      const lngNum = parseFloat(lon);
-      showSchoolAt(LeafletModule, latNum, lngNum, display_name);
-      await fetchSpots(latNum, lngNum);
-    } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Søket feilet.");
+    const found = await nominatimSearch(schoolName, schoolCity, 1);
+    if (found.length === 0) {
+      setStatus(`Fant ikke «${q}» i OpenStreetMap. Prøv å skrive bare «${schoolCity || "byen din"}» eller bruk «Finn meg».`);
       setBusy(false);
+      return;
     }
+    const { lat, lon, display_name } = found[0];
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lon);
+    showSchoolAt(LeafletModule, latNum, lngNum, display_name);
+    await fetchSpots(latNum, lngNum);
   }
 
   function useMyLocation() {
@@ -199,7 +303,7 @@ export function AreaMap() {
   }
 
   async function fetchSpots(lat: number, lng: number) {
-    const radiusMeters = radiusMinutes * 80; // ~5 km/h gå-fart
+    const radiusMeters = radiusMinutes * 80;
     setStatus(`Leter etter parker, skog og vann innenfor ${radiusMinutes} minutter til fots …`);
     const query = `
       [out:json][timeout:25];
@@ -235,7 +339,7 @@ export function AreaMap() {
 
         const name = tags.name ?? tags["name:nb"] ?? KIND_LABEL[kind];
         const distance = haversine(lat, lng, elLat, elLon);
-        if (distance < 30) continue; // skip the school itself
+        if (distance < 30) continue;
         found.push({ id: el.id, kind, name, lat: elLat, lng: elLon, distance });
       }
 
@@ -262,16 +366,34 @@ export function AreaMap() {
   return (
     <div className="area-grid">
       <form className="area-form" onSubmit={searchSchool}>
-        <div className="field">
+        <div className="field" style={{ position: "relative" }}>
           <label htmlFor="naturfag-skole">Skolen din</label>
           <input
             id="naturfag-skole"
             type="text"
-            placeholder="F.eks. Ullern ungdomsskole"
+            placeholder="F.eks. Jordal skole"
             autoComplete="off"
             value={schoolName}
             onChange={(e) => setSchoolName(e.target.value)}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           />
+          {showSuggestions && suggestions.length > 0 && (
+            <ul className="suggest">
+              {suggestions.map((s) => (
+                <li
+                  key={s.place_id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    pickSuggestion(s);
+                  }}
+                >
+                  <strong>{s.name || s.display_name.split(",")[0]}</strong>
+                  <span>{s.display_name}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <div className="field">
           <label htmlFor="naturfag-by">By / kommune</label>

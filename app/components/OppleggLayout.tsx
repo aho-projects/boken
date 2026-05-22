@@ -68,8 +68,18 @@ export function OppleggPage({
 }) {
   return (
     <main className="opplegg-page">
+      <Link href="/" className="kr-logo opplegg-mark" aria-label="Boken — til forsiden">
+        <img className="f-closed" src="/assets/logo-closed.png" alt="" />
+        <img className="f-opening" src="/assets/logo-opening.png" alt="" />
+        <img className="f-open" src="/assets/logo-open.png" alt="" />
+      </Link>
+
       <div className="crumb">
-        <Link href="/">Hjem</Link> &nbsp;/&nbsp; <Link href="/#opplegg">Opplegg</Link> &nbsp;/&nbsp; {opplegg.title}
+        <Link href="/" className="crumb-back">← Tilbake til hjem</Link>
+        <span style={{ margin: "0 8px" }}>·</span>
+        <Link href="/#opplegg">Opplegg</Link>
+        <span style={{ margin: "0 8px" }}>/</span>
+        <span>{opplegg.title}</span>
       </div>
 
       <h1 className="opplegg-title">{opplegg.title}</h1>
@@ -87,11 +97,6 @@ export function OppleggPage({
         group="2–4 i gruppe"
       />
 
-      <div style={{ marginBottom: 36 }}>
-        <Link href="/grupper" className="btn-dl" style={{ background: "var(--blue)", color: "var(--ink)" }}>
-          ✎ Lag grupper for klassen
-        </Link>
-      </div>
 
       <section className="laeringsmaal">
         <h2>Læringsmål</h2>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Cabin, Kalam } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
+import { EmbedResize } from "./EmbedResize";
 
 const cabin = Cabin({
   subsets: ["latin"],
@@ -16,19 +17,17 @@ const kalam = Kalam({
 });
 
 export const metadata: Metadata = {
-  title: "Boken — KasseRommet",
-  description:
-    "Boken er en hjemmelaget notatbok elevene stifter sammen av ti A4-ark. KasseRommet er et designprosjekt fra GK2 / AHO.",
+  title: "Boken — embed",
+  robots: { index: false, follow: false },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function EmbedLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="nb" className={`${cabin.variable} ${kalam.variable}`}>
-      <body>{children}</body>
+      <body className="embed-body">
+        <EmbedResize />
+        <main className="embed-main">{children}</main>
+      </body>
     </html>
   );
 }

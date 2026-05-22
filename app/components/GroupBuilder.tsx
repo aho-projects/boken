@@ -1,8 +1,17 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
-type Mode = "names" | "count";
+const TEAM_COLORS = [
+  { name: "Gul", bg: "var(--yellow)" },
+  { name: "Blå", bg: "var(--blue)" },
+  { name: "Oransje", bg: "var(--orange)", text: "#fff" },
+  { name: "Hvit", bg: "#fff" },
+  { name: "Lilla", bg: "#D7BDE2" },
+  { name: "Grønn", bg: "#B7E0A8" },
+  { name: "Rosa", bg: "#F4C2C2" },
+  { name: "Krem", bg: "var(--paper-warm)" },
+];
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -13,14 +22,39 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function makeGroups<T>(items: T[], groupSize: number): T[][] {
-  if (items.length === 0 || groupSize < 1) return [];
-  const shuffled = shuffle(items);
-  const groups: T[][] = [];
-  for (let i = 0; i < shuffled.length; i += groupSize) {
-    groups.push(shuffled.slice(i, i + groupSize));
+function distributeRespectingLocks(
+  students: string[],
+  groupSize: number,
+  locks: Record<string, number>, // student name → group index
+): string[][] {
+  if (students.length === 0 || groupSize < 1) return [];
+  const groupCount = Math.max(1, Math.ceil(students.length / groupSize));
+  const groups: string[][] = Array.from({ length: groupCount }, () => []);
+
+  // Place locked students first
+  const lockedNames = new Set<string>();
+  for (const name of students) {
+    const lockIdx = locks[name];
+    if (typeof lockIdx === "number" && lockIdx < groupCount && groups[lockIdx].length < groupSize) {
+      groups[lockIdx].push(name);
+      lockedNames.add(name);
+    }
   }
-  // Distribute the last small group if it's tiny
+
+  // Shuffle remaining and fill in
+  const remaining = shuffle(students.filter((s) => !lockedNames.has(s)));
+  let idx = 0;
+  for (const name of remaining) {
+    let tries = 0;
+    while (groups[idx % groupCount].length >= groupSize && tries < groupCount) {
+      idx += 1;
+      tries += 1;
+    }
+    groups[idx % groupCount].push(name);
+    idx += 1;
+  }
+
+  // Merge single-student trailing group into first group if size allows
   if (groups.length >= 2 && groups[groups.length - 1].length === 1 && groupSize >= 3) {
     const last = groups.pop()!;
     groups[0].push(...last);
@@ -29,155 +63,210 @@ function makeGroups<T>(items: T[], groupSize: number): T[][] {
 }
 
 export function GroupBuilder() {
-  const [mode, setMode] = useState<Mode>("names");
-  const [rawNames, setRawNames] = useState("");
-  const [count, setCount] = useState(24);
+  const [raw, setRaw] = useState("");
   const [groupSize, setGroupSize] = useState(3);
+  const [generated, setGenerated] = useState(false);
   const [groups, setGroups] = useState<string[][]>([]);
-  const [seed, setSeed] = useState(0);
+  const [locks, setLocks] = useState<Record<string, number>>({});
+  const [stokket, setStokket] = useState(0);
+  const [copied, setCopied] = useState(false);
 
-  const names = useMemo(
-    () =>
-      rawNames
-        .split(/[\n,]+/)
-        .map((s) => s.trim())
-        .filter(Boolean),
-    [rawNames],
-  );
+  // Parse input: if it's pure digits → generate Elev 1..N, else split by newline/comma
+  const { students, isNumeric } = useMemo(() => {
+    const trimmed = raw.trim();
+    if (/^\d+$/.test(trimmed)) {
+      const n = Math.max(0, Math.min(120, parseInt(trimmed, 10)));
+      return {
+        students: Array.from({ length: n }, (_, i) => `Elev ${i + 1}`),
+        isNumeric: true,
+      };
+    }
+    const names = trimmed
+      .split(/[\n,]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return { students: names, isNumeric: false };
+  }, [raw]);
 
-  const totalStudents = mode === "names" ? names.length : count;
+  // Live preview group count + empty slots
+  const previewGroups = useMemo(() => {
+    if (students.length === 0) return [];
+    const count = Math.max(1, Math.ceil(students.length / groupSize));
+    return Array.from({ length: count }, (_, i) => Array<string>(groupSize).fill(""));
+  }, [students.length, groupSize]);
 
   const generate = () => {
-    const items =
-      mode === "names"
-        ? names
-        : Array.from({ length: count }, (_, i) => `Elev ${i + 1}`);
-    setGroups(makeGroups(items, groupSize));
-    setSeed((s) => s + 1);
+    const result = distributeRespectingLocks(students, groupSize, locks);
+    setGroups(result);
+    setGenerated(true);
+    setStokket((s) => s + 1);
+  };
+
+  const toggleLock = (name: string, groupIdx: number) => {
+    setLocks((prev) => {
+      const next = { ...prev };
+      if (next[name] === groupIdx) {
+        delete next[name];
+      } else {
+        next[name] = groupIdx;
+      }
+      return next;
+    });
   };
 
   const clear = () => {
+    setRaw("");
     setGroups([]);
-    setRawNames("");
+    setGenerated(false);
+    setLocks({});
   };
 
   const handlePrint = () => {
     if (typeof window !== "undefined") window.print();
   };
 
+  const handleCopy = async () => {
+    const text = groups
+      .map((g, i) => {
+        const team = TEAM_COLORS[i % TEAM_COLORS.length];
+        return `${team.name} gruppe:\n  ${g.join("\n  ")}`;
+      })
+      .join("\n\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard blocked */
+    }
+  };
+
+  const displayGroups = generated ? groups : previewGroups;
+
   return (
     <>
       <div className="gb-card">
-        <div className="gb-tabs" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "names"}
-            className={mode === "names" ? "active" : ""}
-            onClick={() => setMode("names")}
-          >
-            Lim inn navneliste
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "count"}
-            className={mode === "count" ? "active" : ""}
-            onClick={() => setMode("count")}
-          >
-            Bare antall
-          </button>
+        <div className="gb-field">
+          <label htmlFor="gb-raw">
+            Lim inn klasselista — eller bare skriv et tall
+          </label>
+          <textarea
+            id="gb-raw"
+            value={raw}
+            onChange={(e) => setRaw(e.target.value)}
+            placeholder={"Aisha\nBjørn\nClara\nDavid\n…\n\n— eller bare skriv «24» —"}
+          />
+          <small style={{ color: "var(--ink-soft)" }}>
+            {students.length > 0
+              ? isNumeric
+                ? `${students.length} anonyme elever`
+                : `${students.length} navn`
+              : "Ingen elever ennå"}
+          </small>
         </div>
 
-        {mode === "names" ? (
-          <div className="gb-field">
-            <label htmlFor="gb-names">
-              Lim inn navnene — ett per linje (eller skill med komma)
-            </label>
-            <textarea
-              id="gb-names"
-              value={rawNames}
-              onChange={(e) => setRawNames(e.target.value)}
-              placeholder={"Aisha\nBjørn\nClara\nDavid\n…"}
-            />
-            <small style={{ color: "var(--ink-soft)" }}>
-              {names.length} {names.length === 1 ? "navn" : "navn"} lest inn
-            </small>
-          </div>
-        ) : (
-          <div className="gb-field">
-            <label htmlFor="gb-count">Antall elever</label>
-            <input
-              id="gb-count"
-              type="number"
-              min={1}
-              max={120}
-              value={count}
-              onChange={(e) => setCount(Math.max(1, Math.min(120, Number(e.target.value) || 0)))}
-            />
-          </div>
-        )}
-
-        <div className="gb-row">
-          <div className="gb-field">
-            <label htmlFor="gb-size">Gruppestørrelse</label>
-            <select
-              id="gb-size"
-              value={groupSize}
-              onChange={(e) => setGroupSize(Number(e.target.value))}
-              style={{
-                border: "1.5px solid var(--ink)",
-                padding: "12px 14px",
-                fontFamily: "Cabin, sans-serif",
-                fontSize: 16,
-                background: "#fff",
-              }}
-            >
-              <option value={2}>2 i gruppe (par)</option>
-              <option value={3}>3 i gruppe</option>
-              <option value={4}>4 i gruppe</option>
-              <option value={5}>5 i gruppe</option>
-            </select>
-          </div>
-          <div className="gb-field">
-            <label>Resultat</label>
-            <div style={{ paddingTop: 12, fontFamily: "Kalam, sans-serif", fontSize: 18 }}>
-              {totalStudents > 0
-                ? `${Math.ceil(totalStudents / groupSize)} grupper på ~${groupSize} elever`
-                : "— ingen elever ennå —"}
-            </div>
+        <div className="gb-size">
+          <label>Gruppestørrelse</label>
+          <div className="gb-size-chips" role="radiogroup">
+            {[2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="radio"
+                aria-checked={groupSize === n}
+                className={groupSize === n ? "active" : ""}
+                onClick={() => setGroupSize(n)}
+              >
+                {n} elever
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="gb-actions">
-          <button type="button" onClick={generate} disabled={totalStudents === 0}>
-            {groups.length === 0 ? "Lag grupper" : "Stokk på nytt"}
+          <button
+            type="button"
+            className="primary"
+            onClick={generate}
+            disabled={students.length === 0}
+          >
+            {generated ? "Stokk på nytt ↻" : "Stokk! ✨"}
           </button>
+          {generated && (
+            <>
+              <button type="button" className="ghost" onClick={handleCopy}>
+                {copied ? "Kopiert! ✓" : "Kopier"}
+              </button>
+              <button type="button" className="ghost" onClick={handlePrint}>
+                Skriv ut
+              </button>
+            </>
+          )}
           <button type="button" className="ghost" onClick={clear}>
             Tøm
           </button>
-          {groups.length > 0 && (
-            <button type="button" className="ghost" onClick={handlePrint}>
-              Skriv ut
-            </button>
-          )}
         </div>
+
+        {Object.keys(locks).length > 0 && generated && (
+          <div className="gb-locks-note">
+            🔒 Låst: {Object.keys(locks).join(", ")}. De holder gruppa si når du
+            stokker på nytt — trykk på navnet igjen for å låse opp.
+          </div>
+        )}
       </div>
 
-      {groups.length > 0 && (
+      {displayGroups.length > 0 && (
         <section className="gb-results">
-          <h2>Forslag (stokket #{seed})</h2>
+          <h2>
+            {generated
+              ? `${groups.length} grupper · stokket ${stokket} ${stokket === 1 ? "gang" : "ganger"}`
+              : "Forhåndsvisning"}
+          </h2>
+          {!generated && (
+            <p className="gb-preview-hint">
+              Slik vil grupperingen se ut. Trykk «Stokk!» for å fylle dem med navn.
+            </p>
+          )}
           <div className="gb-groups-grid">
-            {groups.map((g, i) => (
-              <div className="gb-group-card" key={i}>
-                <h3>Gruppe {i + 1}</h3>
-                <ul>
-                  {g.map((name, j) => (
-                    <li key={j}>{name}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+            {displayGroups.map((g, i) => {
+              const team = TEAM_COLORS[i % TEAM_COLORS.length];
+              return (
+                <div
+                  className={`gb-team-card ${team.name.toLowerCase()}`}
+                  key={i}
+                  style={{
+                    background: team.bg,
+                    color: team.text ?? "var(--ink)",
+                  }}
+                >
+                  <h3>{team.name} gruppe</h3>
+                  <ul>
+                    {generated
+                      ? g.map((name, j) => {
+                          const locked = locks[name] === i;
+                          return (
+                            <li key={j}>
+                              <button
+                                type="button"
+                                className={`gb-name ${locked ? "locked" : ""}`}
+                                onClick={() => toggleLock(name, i)}
+                                title={locked ? "Klikk for å låse opp" : "Klikk for å låse i denne gruppa"}
+                              >
+                                {locked ? "🔒 " : ""}
+                                {name}
+                              </button>
+                            </li>
+                          );
+                        })
+                      : g.map((_, j) => (
+                          <li key={j} className="gb-empty">
+                            —
+                          </li>
+                        ))}
+                  </ul>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

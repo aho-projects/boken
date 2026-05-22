@@ -7,6 +7,11 @@ export default function HomePage() {
   return (
     <>
       <section className="hero">
+        <Link href="/" className="kr-logo hero-logo" aria-label="Boken">
+          <img className="f-closed" src="/assets/logo-closed.png" alt="" />
+          <img className="f-opening" src="/assets/logo-opening.png" alt="" />
+          <img className="f-open" src="/assets/logo-open.png" alt="" />
+        </Link>
         <div className="hero-eyebrow">Boken · for ungdomsskolen</div>
         <h1>Hva husker du fra forrige uke?</h1>
         <p className="lede">
@@ -32,16 +37,16 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div className="tagstrip" aria-hidden="true">
+      <div className="tagstrip">
         <div className="track">
           {[...Array(2)].map((_, pass) => (
             <span key={pass} style={{ display: "inline" }}>
-              <span>Sketchnoting</span><span className="divider">/</span>
-              <span>Naturfag</span><span className="divider">/</span>
-              <span>Ut og titte</span><span className="divider">/</span>
-              <span>Isberg</span><span className="divider">/</span>
-              <span>Bytte perspektiv</span><span className="divider">/</span>
-              <span>Den hjemmelagde kilden</span><span className="divider">/</span>
+              <Link href="/sketchnoting">Sketchnoting</Link><span className="divider">/</span>
+              <Link href="/naturfag-ute">Naturfag</Link><span className="divider">/</span>
+              <Link href="/ut-og-titte">Ut og titte</Link><span className="divider">/</span>
+              <Link href="/isberg">Isberg</Link><span className="divider">/</span>
+              <Link href="/bytte-perspektiv">Bytte perspektiv</Link><span className="divider">/</span>
+              <Link href="/hjemmelagde-kilden">Den hjemmelagde kilden</Link><span className="divider">/</span>
             </span>
           ))}
         </div>
@@ -72,26 +77,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="stats-section">
-        <div className="stats-inner">
-          <div className="stat-item">
-            <div className="stat-illu"><img src="/assets/stat-sitter.png" alt="" /></div>
-            <div className="stat-num">29%</div>
-            <div className="stat-text">Husker 29% mer når man tegner mens man lytter</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-illu"><img src="/assets/stat-hand.png" alt="" /></div>
-            <div className="stat-num">↗</div>
-            <div className="stat-text">Øker tegneferdigheter</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-illu"><img src="/assets/stat-bok.png" alt="" /></div>
-            <div className="stat-num">x2</div>
-            <div className="stat-text">Husker dobbelt så mye når du tegner det du skal lære deg</div>
-          </div>
-        </div>
-      </section>
-
       <section className="how-section">
         <h2>Slik fungerer det</h2>
         <div className="how-grid">
@@ -113,6 +98,44 @@ export default function HomePage() {
             <h3>Fyll inn</h3>
             <p>Elevene fyller boka med tegninger, sketchnotes, foldbare sider og lommer for løse lapper — gjennom hele året.</p>
           </div>
+        </div>
+      </section>
+
+      <section className="stats-section">
+        <div className="stats-inner">
+          <div className="stat-item">
+            <div className="stat-illu"><img src="/assets/stat-sitter.png" alt="" /></div>
+            <div className="stat-num">29%</div>
+            <div className="stat-text">Husker 29% mer når man tegner mens man lytter</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-illu"><img src="/assets/stat-hand.png" alt="" /></div>
+            <div className="stat-num">↗</div>
+            <div className="stat-text">Øker tegneferdigheter</div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-illu"><img src="/assets/stat-bok.png" alt="" /></div>
+            <div className="stat-num">x2</div>
+            <div className="stat-text">Husker dobbelt så mye når du tegner det du skal lære deg</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="book-cta" id="lage-boka">
+        <div className="panel-visual" aria-hidden="true">
+          <div className="stack"><img src="/assets/oppskrift-notatbok.png" alt="" /></div>
+          <div className="stack two"><img src="/assets/oppskrift-lomme.png" alt="" /></div>
+        </div>
+        <div className="panel">
+          <div style={{ fontFamily: "Kalam, sans-serif", color: "#fff", opacity: 0.85, marginBottom: 8, fontSize: 18 }}>
+            — gjøres på 5 minutter —
+          </div>
+          <h3>Hvordan lage boka</h3>
+          <p>
+            Ti A4-ark, en stiftemaskin og en bordkant. Vi har laget tre oppskrifter:
+            grunnboka, lommer for løse lapper, og utbrettbare sider for store skisser.
+          </p>
+          <Link href="/hvordan-lage-boka" className="btn">Slik lager du boken →</Link>
         </div>
       </section>
 
@@ -141,24 +164,6 @@ export default function HomePage() {
               </Link>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="book-cta" id="lage-boka">
-        <div className="panel-visual" aria-hidden="true">
-          <div className="stack"><img src="/assets/oppskrift-notatbok.png" alt="" /></div>
-          <div className="stack two"><img src="/assets/oppskrift-lomme.png" alt="" /></div>
-        </div>
-        <div className="panel">
-          <div style={{ fontFamily: "Kalam, sans-serif", color: "#fff", opacity: 0.85, marginBottom: 8, fontSize: 18 }}>
-            — gjøres på 5 minutter —
-          </div>
-          <h3>Hvordan lage boka</h3>
-          <p>
-            Ti A4-ark, en stiftemaskin og en bordkant. Vi har laget tre oppskrifter:
-            grunnboka, lommer for løse lapper, og utbrettbare sider for store skisser.
-          </p>
-          <Link href="/hvordan-lage-boka" className="btn">Slik lager du boken →</Link>
         </div>
       </section>
 

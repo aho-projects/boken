@@ -40,7 +40,7 @@ export default function ForLaerereePage() {
 
       <div className="continue" style={{ marginTop: 56 }}>
         <Link className="next" href="/">← Tilbake til forsiden</Link>
-        <Link className="next" href="/grupper">Lag grupper for klassen →</Link>
+        <Link className="next" href="/hvordan-lage-boka">Hvordan lage boka →</Link>
       </div>
     </main>
   );

@@ -19,6 +19,18 @@ export default function HvordanLageBokaPage() {
         </p>
       </section>
 
+      <section className="video-wrap" style={{ padding: 0, marginTop: 32 }}>
+        <div className="video" role="img" aria-label="Video som viser hvordan boka lages">
+          <div className="video-inner">
+            <button className="play-btn" type="button" aria-label="Spill video">
+              <svg viewBox="0 0 24 24"><path d="M5 3v18l16-9z" fill="#fff" /></svg>
+            </button>
+            <div className="video-label">Video — hvordan lage boka · ca. 1 min</div>
+            <div className="video-caption">— placeholder, video kommer snart —</div>
+          </div>
+        </div>
+      </section>
+
       <section className="steps" style={{ marginTop: 56 }}>
         <div className="step">
           <div className="num">1</div>
