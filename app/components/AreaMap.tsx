@@ -47,22 +47,46 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// Hand-drawn-ish stick figure for the user/school marker.
+// Orange body, ink outline, simple face. Approximates the Boken character style.
+const STICK_FIGURE_SVG = `
+  <svg viewBox="0 0 38 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <ellipse cx="19" cy="49.5" rx="9" ry="1.6" fill="#1A1A1A" opacity="0.22"/>
+    <path fill="#FE8247" stroke="#1A1A1A" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"
+          d="M 19 13 L 14 15 Q 10 17 8 23 Q 7 27 6 30 L 9 30 Q 10 27 13 24 L 13 32 L 11 47 L 14 49 L 16 36 L 18 36 L 19 49 L 22 49 L 22 36 L 24 36 L 26 49 L 29 47 L 27 32 L 27 24 Q 30 27 31 30 L 34 30 Q 33 27 32 23 Q 30 17 26 15 Z"/>
+    <circle cx="19" cy="8" r="6.5" fill="#FE8247" stroke="#1A1A1A" stroke-width="1.6"/>
+    <circle cx="16.8" cy="7.5" r="0.95" fill="#1A1A1A"/>
+    <circle cx="21.2" cy="7.5" r="0.95" fill="#1A1A1A"/>
+    <path d="M 16.8 9.8 Q 19 11.2 21.2 9.8" fill="none" stroke="#1A1A1A" stroke-width="1.1" stroke-linecap="round"/>
+  </svg>
+`;
+
+// Classic teardrop pin used for the park/forest/water numbered spots
+const TEARDROP_SVG = `
+  <svg viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">
+    <path d="M16 1C8 1 2 7 2 15c0 11 14 24 14 24s14-13 14-24c0-8-6-14-14-14z" stroke="#1A1A1A" stroke-width="1.8"/>
+    <circle cx="16" cy="15" r="5" fill="#fff" stroke="#1A1A1A" stroke-width="1.6"/>
+  </svg>
+`;
+
 function makeDivIcon(L: typeof import("leaflet"), kind: SpotKind | "school" | "you", label?: string) {
   const cls = `boken-pin ${kind}`;
+  const isPerson = kind === "school" || kind === "you";
   const html = `
-    <div class="${cls}">
-      <svg viewBox="0 0 32 40" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16 1C8 1 2 7 2 15c0 11 14 24 14 24s14-13 14-24c0-8-6-14-14-14z" stroke="#1A1A1A" stroke-width="1.8"/>
-        <circle cx="16" cy="15" r="5" fill="#fff" stroke="#1A1A1A" stroke-width="1.6"/>
-      </svg>
+    <div class="${cls}${isPerson ? " is-person" : ""}">
+      ${isPerson ? STICK_FIGURE_SVG : TEARDROP_SVG}
       ${label ? `<span class="label">${label}</span>` : ""}
     </div>
   `;
+  // The stick figure has its "feet" anchor at the bottom-center; the teardrop
+  // anchors slightly above its tip so the pin point lands on the location.
+  const size: [number, number] = isPerson ? [38, 52] : [32, 40];
+  const anchor: [number, number] = isPerson ? [19, 50] : [16, 38];
   return L.divIcon({
     className: "boken-pin-wrap",
     html,
-    iconSize: [32, 40],
-    iconAnchor: [16, 38],
+    iconSize: size,
+    iconAnchor: anchor,
     popupAnchor: [0, -32],
   });
 }

@@ -2975,3 +2975,17 @@ a.pdf-tile:hover .tile { box-shadow: 6px 7px 0 var(--ink); }
   /* Don't print iframe chrome */
   .embed-main { padding: 0 !important; }
 }
+
+/* Stick-figure marker — replaces the teardrop pin for the user/school location.
+   Larger than the spot pins, and its SVG fills the wrapper. */
+.boken-pin.is-person {
+  width: 38px; height: 52px;
+}
+.boken-pin.is-person svg {
+  width: 100%; height: 100%; display: block;
+  filter: drop-shadow(1px 1px 0 rgba(0,0,0,.3));
+}
+/* When the spot pins (park/skog/vann) need their color */
+.boken-pin.park svg path:first-of-type { fill: #9DC489; }
+.boken-pin.skog svg path:first-of-type { fill: #4F7A47; }
+.boken-pin.vann svg path:first-of-type { fill: #84B2C9; }
