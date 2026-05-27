@@ -2795,3 +2795,6 @@ a.pdf-tile:hover .tile { box-shadow: 6px 7px 0 var(--ink); }
   transition: color .15s;
 }
 .crumb .crumb-back:hover { color: var(--orange); }
+
+/* Click-on-map cursor hint inside Boken area maps */
+.area-map.live .leaflet-grab { cursor: crosshair; }

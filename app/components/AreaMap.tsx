@@ -67,27 +67,78 @@ function makeDivIcon(L: typeof import("leaflet"), kind: SpotKind | "school" | "y
   });
 }
 
-/** Try multiple Nominatim queries. Returns the first non-empty result list. */
-async function nominatimSearch(school: string, city: string, limit = 6): Promise<Suggestion[]> {
+/**
+ * Geocode a school. Tries Photon (Komoot's reliable OSM-backed geocoder) first,
+ * falls back to Nominatim. Both are free + no API key.
+ * Photon is much more stable in practice — the public Nominatim instance is
+ * frequently rate-limited or returns 503.
+ */
+async function geocodeSearch(school: string, city: string, limit = 6): Promise<Suggestion[]> {
   const variants: string[] = [];
   const trimmedSchool = school.trim();
   const trimmedCity = city.trim();
 
   if (trimmedSchool) {
-    variants.push([trimmedSchool, trimmedCity].filter(Boolean).join(", "));
-    // Norwegian: OSM mostly tags schools as "X skole" not "X ungdomsskole"
+    variants.push([trimmedSchool, trimmedCity].filter(Boolean).join(" "));
     if (/ungdomsskole|barneskole|videregående/i.test(trimmedSchool)) {
       const simpler = trimmedSchool.replace(/ungdomsskole|barneskole|videregående( skole)?/i, "skole").trim();
-      variants.push([simpler, trimmedCity].filter(Boolean).join(", "));
+      variants.push([simpler, trimmedCity].filter(Boolean).join(" "));
     }
-    // Also try with just "skole" appended if not already
     if (!/skole/i.test(trimmedSchool)) {
-      variants.push([`${trimmedSchool} skole`, trimmedCity].filter(Boolean).join(", "));
+      variants.push([`${trimmedSchool} skole`, trimmedCity].filter(Boolean).join(" "));
     }
   } else if (trimmedCity) {
     variants.push(trimmedCity);
   }
 
+  // --- Primary: Photon (more reliable, GeoJSON FeatureCollection) ---
+  for (const q of variants) {
+    if (!q) continue;
+    try {
+      const res = await fetch(
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=${limit}&lang=no`,
+      );
+      if (!res.ok) continue;
+      const data = (await res.json()) as {
+        features: Array<{
+          properties: {
+            osm_id?: number;
+            name?: string;
+            city?: string;
+            district?: string;
+            country?: string;
+            type?: string;
+            osm_value?: string;
+          };
+          geometry: { coordinates: [number, number] };
+        }>;
+      };
+      const features = data.features ?? [];
+      const norwegian = features.filter(
+        (f) => f.properties.country === "Norge" || f.properties.country === "Norway",
+      );
+      const pick = norwegian.length > 0 ? norwegian : features;
+      if (pick.length > 0) {
+        return pick.map((f, i) => {
+          const p = f.properties;
+          const [lon, lat] = f.geometry.coordinates;
+          const placeBits = [p.district, p.city, p.country].filter(Boolean).join(", ");
+          return {
+            place_id: p.osm_id ?? i,
+            lat: String(lat),
+            lon: String(lon),
+            display_name: `${p.name ?? "?"}${placeBits ? ", " + placeBits : ""}`,
+            name: p.name,
+            type: p.osm_value,
+          };
+        });
+      }
+    } catch {
+      // try next variant
+    }
+  }
+
+  // --- Fallback: Nominatim ---
   for (const q of variants) {
     if (!q) continue;
     try {
@@ -99,9 +150,10 @@ async function nominatimSearch(school: string, city: string, limit = 6): Promise
       const data = (await res.json()) as Suggestion[];
       if (data.length > 0) return data;
     } catch {
-      // try the next variant
+      // try next variant
     }
   }
+
   return [];
 }
 
@@ -112,7 +164,7 @@ export function AreaMap() {
   const spotsLayerRef = useRef<LayerGroup | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [LeafletModule, setLeafletModule] = useState<typeof import("leaflet") | null>(null);
-  const [status, setStatus] = useState<string>("Skriv inn skolen din, eller bruk «Finn meg» under.");
+  const [status, setStatus] = useState<string>("Skriv inn skolen din, bruk «Finn meg», eller klikk direkte på kartet.");
   const [busy, setBusy] = useState(false);
   const [spots, setSpots] = useState<Spot[]>([]);
   const [filterType, setFilterType] = useState<"all" | "park" | "skog" | "vann">("all");
@@ -166,6 +218,15 @@ export function AreaMap() {
       spotsLayerRef.current = L.layerGroup().addTo(map);
       leafletMapRef.current = map;
 
+      // Click-on-map fallback: if geocoders are down or the school isn't in OSM,
+      // teachers can just click their school location directly on the map.
+      map.on("click", (e: { latlng: { lat: number; lng: number } }) => {
+        const { lat, lng } = e.latlng;
+        showSchoolAt(L, lat, lng, "Valgt sted");
+        setStatus(`Plassert manuelt. Leter etter parker, skog og vann i nærheten …`);
+        void fetchSpots(lat, lng);
+      });
+
       setTimeout(() => map.invalidateSize(), 100);
     })();
     return () => {
@@ -186,7 +247,7 @@ export function AreaMap() {
       return;
     }
     debounceRef.current = setTimeout(async () => {
-      const found = await nominatimSearch(schoolName, schoolCity, 6);
+      const found = await geocodeSearch(schoolName, schoolCity, 6);
       setSuggestions(found);
       setShowSuggestions(found.length > 0);
     }, 450);
@@ -266,9 +327,9 @@ export function AreaMap() {
     setBusy(true);
     setShowSuggestions(false);
     setStatus(`Søker etter «${q}» …`);
-    const found = await nominatimSearch(schoolName, schoolCity, 1);
+    const found = await geocodeSearch(schoolName, schoolCity, 1);
     if (found.length === 0) {
-      setStatus(`Fant ikke «${q}» i OpenStreetMap. Prøv å skrive bare «${schoolCity || "byen din"}» eller bruk «Finn meg».`);
+      setStatus(`Fant ikke «${q}». Prøv et annet søk, bruk «Finn meg», eller klikk direkte på kartet der skolen er.`);
       setBusy(false);
       return;
     }
