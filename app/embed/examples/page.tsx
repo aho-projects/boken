@@ -1,5 +1,8 @@
-import Link from "next/link";
 import { getSupabaseServer } from "@/lib/supabase/server";
+
+// The actual WordPress page hosting the feedback form — embeds link out to
+// this with target="_top" so they break out of the iframe into the parent page.
+const WP_FEEDBACK_URL = "https://kasserommet.no/08-gruppe/#boken-feedback";
 
 export const metadata = { title: "Boken — Eksempler fra lærere" };
 
@@ -105,13 +108,8 @@ export default async function EmbedExamples({
           <strong>Ingen eksempler ennå</strong>
           <p>
             Bli den første — last opp bilder via skjemaet på{" "}
-            <Link href="/#feedback">forsiden</Link>.
+            <a href={WP_FEEDBACK_URL} target="_top" rel="noopener">forsiden</a>.
           </p>
-          {!supabase && (
-            <p className="examples-fallback">
-              {/* Soft placeholder grid so the layout doesn't collapse */}
-            </p>
-          )}
         </div>
       )}
     </section>
