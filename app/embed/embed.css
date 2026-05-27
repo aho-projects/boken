@@ -29,7 +29,7 @@
   --paper-warm:   var(--kr-cream);
 
   background: transparent !important;
-  font-family: "Manrope", var(--font-cabin), system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-manrope), "Manrope", var(--font-cabin), system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--kr-contrast);
 }
 
@@ -42,7 +42,7 @@
 .embed-body h2,
 .embed-body h3,
 .embed-body h4 {
-  font-family: "Manrope", var(--font-cabin), system-ui, sans-serif !important;
+  font-family: var(--font-manrope), "Manrope", var(--font-cabin), system-ui, sans-serif !important;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--kr-contrast);
@@ -54,7 +54,7 @@
 .embed-body .hero-eyebrow,
 .embed-body .udir,
 .embed-body .opp2-udir {
-  font-family: "Manrope", var(--font-cabin), system-ui, sans-serif !important;
+  font-family: var(--font-manrope), "Manrope", var(--font-cabin), system-ui, sans-serif !important;
   font-weight: 600;
 }
 
@@ -134,7 +134,7 @@
   border-radius: 4px;
   box-shadow: none;
   font-weight: 600;
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: var(--font-manrope), "Manrope", system-ui, sans-serif;
   transition: background .15s, transform .12s;
 }
 .embed-body button:hover,
@@ -181,7 +181,7 @@
   border-radius: 4px;
   background: var(--kr-base);
   color: var(--kr-contrast);
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: var(--font-manrope), "Manrope", system-ui, sans-serif;
 }
 .embed-body input:focus,
 .embed-body select:focus,
@@ -229,7 +229,7 @@
    EXAMPLES EMBED — gallery layout
    ============================================ */
 .examples-embed {
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: var(--font-manrope), "Manrope", system-ui, sans-serif;
   color: var(--kr-contrast);
 }
 .examples-head {
@@ -328,7 +328,7 @@
 .embed-body .area-map .legend {
   background: var(--kr-base);
   border: 1px solid var(--kr-line);
-  font-family: "Manrope", system-ui, sans-serif;
+  font-family: var(--font-manrope), "Manrope", system-ui, sans-serif;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
