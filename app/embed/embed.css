@@ -458,3 +458,10 @@
   margin-bottom: 4px;
 }
 .examples-empty a { color: var(--orange); text-decoration: underline; }
+
+/* In embed routes, suppress the bottom-right Leaflet attribution from being snapshot'd
+   when the print map is captured. Also override the embed-flat print appearance. */
+@media print {
+  .embed-body { background: #fff !important; padding: 0 !important; }
+  .embed-main { padding: 0 !important; }
+}
