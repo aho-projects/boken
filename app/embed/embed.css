@@ -1,0 +1,369 @@
+/* ============================================
+   EMBED THEME — matched to kasserommet.no / Twenty Twenty-Five
+   Loaded only inside /embed/* routes. Overrides the brutal Boken
+   styles with a cleaner, flatter aesthetic so the iframes blend
+   naturally into the WP page chrome.
+   ============================================ */
+
+.embed-body {
+  /* WP palette */
+  --kr-base:     #FFFFFF;
+  --kr-cream:    #FBFAF3;
+  --kr-contrast: #111111;
+  --kr-muted:    #686868;
+  --kr-yellow:   #FFEE58;
+  --kr-pink:     #F6CFF4;
+  --kr-purple:   #503AA8;
+  --kr-line:     rgba(17, 17, 17, .12);
+
+  /* Re-bind Boken vars to KR equivalents so existing CSS picks up the new palette */
+  --orange:       var(--kr-purple);
+  --orange-deep:  #3D2B83;
+  --blue:         var(--kr-pink);
+  --blue-deep:    #E0A8DC;
+  --yellow:       var(--kr-yellow);
+  --yellow-deep:  #EFD850;
+  --ink:          var(--kr-contrast);
+  --ink-soft:     var(--kr-muted);
+  --paper:        var(--kr-base);
+  --paper-warm:   var(--kr-cream);
+
+  background: transparent !important;
+  font-family: "Manrope", var(--font-cabin), system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--kr-contrast);
+}
+
+.embed-body * {
+  font-family: inherit;
+}
+
+/* Headings — keep Cabin for headlines but lighter weight, no Kalam */
+.embed-body h1,
+.embed-body h2,
+.embed-body h3,
+.embed-body h4 {
+  font-family: "Manrope", var(--font-cabin), system-ui, sans-serif !important;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--kr-contrast);
+}
+
+/* No more Kalam handwriting in embeds */
+.embed-body .hand,
+.embed-body .opplegg-sub,
+.embed-body .hero-eyebrow,
+.embed-body .udir,
+.embed-body .opp2-udir {
+  font-family: "Manrope", var(--font-cabin), system-ui, sans-serif !important;
+  font-weight: 600;
+}
+
+/* Flatten the brutal offset shadows everywhere */
+.embed-body .desc-card,
+.embed-body .utstyr,
+.embed-body .opp2-utstyr,
+.embed-body .opp2-hero,
+.embed-body .opp2-pill,
+.embed-body .pdf-tile .tile,
+.embed-body .eks-stu-card,
+.embed-body .opplegg-card,
+.embed-body .feedback-form,
+.embed-body .continue,
+.embed-body .opp2-eks-card,
+.embed-body .roadmap-placeholder,
+.embed-body .home-eks-card,
+.embed-body .area-form,
+.embed-body .area-map,
+.embed-body .uot-controls,
+.embed-body .uot-cat,
+.embed-body .gb-card,
+.embed-body .gb-team-card,
+.embed-body .gb-group-card,
+.embed-body .step .step-card,
+.embed-body .what-book-img,
+.embed-body .video,
+.embed-body .book-cta .panel,
+.embed-body .book-cta .panel-visual .stack,
+.embed-body .btn-primary,
+.embed-body .btn-secondary {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px -16px rgba(0, 0, 0, .12) !important;
+  transform: none !important;
+  border-radius: 4px;
+}
+
+/* Remove the angled rotation on post-its and stat illustrations */
+.embed-body .postit,
+.embed-body .tip,
+.embed-body .what-book-img,
+.embed-body .gb-team-card,
+.embed-body .opplegg-card,
+.embed-body .book-cta .panel,
+.embed-body .home-eks-card,
+.embed-body .tips-row .tip {
+  transform: none !important;
+}
+
+/* Cards: subtle borders, no thick ink lines */
+.embed-body .desc-card,
+.embed-body .utstyr,
+.embed-body .eks-stu-card,
+.embed-body .opplegg-card,
+.embed-body .feedback-form,
+.embed-body .continue,
+.embed-body .area-form,
+.embed-body .area-map,
+.embed-body .uot-controls,
+.embed-body .uot-cat,
+.embed-body .gb-team-card,
+.embed-body .step .step-card,
+.embed-body .example-card {
+  border-width: 1px !important;
+  border-color: var(--kr-line) !important;
+}
+
+/* Buttons — flatter, KR purple */
+.embed-body button,
+.embed-body .btn-primary,
+.embed-body .btn-secondary,
+.embed-body .area-form button,
+.embed-body .feedback-form button,
+.embed-body .uot-find {
+  background: var(--kr-purple);
+  color: var(--kr-base);
+  border: 1px solid var(--kr-purple);
+  border-radius: 4px;
+  box-shadow: none;
+  font-weight: 600;
+  font-family: "Manrope", system-ui, sans-serif;
+  transition: background .15s, transform .12s;
+}
+.embed-body button:hover,
+.embed-body .btn-primary:hover,
+.embed-body .area-form button:hover,
+.embed-body .feedback-form button:hover,
+.embed-body .uot-find:hover {
+  background: var(--kr-contrast);
+  border-color: var(--kr-contrast);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -4px rgba(80, 58, 168, .35);
+}
+
+.embed-body .btn-secondary,
+.embed-body .area-controls button.geo {
+  background: var(--kr-base);
+  color: var(--kr-contrast);
+  border-color: var(--kr-contrast);
+}
+.embed-body .area-controls button.geo:hover {
+  background: var(--kr-yellow);
+  color: var(--kr-contrast);
+}
+
+/* Yellow highlight for selected/positive states */
+.embed-body .form-choice input[type="radio"]:checked + label,
+.embed-body .opplegg-chips input[type="checkbox"]:checked + span,
+.embed-body .rate-row input:checked + span,
+.embed-body .gb-size-chips button.active {
+  background: var(--kr-yellow) !important;
+  color: var(--kr-contrast) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.embed-body .opplegg-chips input[type="checkbox"]:checked + span::before {
+  color: var(--kr-purple) !important;
+}
+
+/* Form fields */
+.embed-body input,
+.embed-body select,
+.embed-body textarea {
+  border: 1px solid var(--kr-line);
+  border-radius: 4px;
+  background: var(--kr-base);
+  color: var(--kr-contrast);
+  font-family: "Manrope", system-ui, sans-serif;
+}
+.embed-body input:focus,
+.embed-body select:focus,
+.embed-body textarea:focus {
+  outline: 2px solid var(--kr-purple);
+  outline-offset: 1px;
+}
+
+/* Upload dropzone */
+.embed-body .upload {
+  background: var(--kr-cream);
+  border: 1px dashed var(--kr-line);
+  color: var(--kr-muted);
+}
+.embed-body .upload-option {
+  background: var(--kr-cream);
+  border: 1px solid var(--kr-line);
+  border-radius: 4px;
+}
+
+/* The dark feedback section becomes light in embed */
+.embed-body .feedback-section {
+  background: transparent !important;
+  color: var(--kr-contrast) !important;
+  padding: 0 !important;
+}
+.embed-body .feedback-section h2,
+.embed-body .feedback-section .intro p {
+  color: var(--kr-contrast) !important;
+}
+.embed-body .feedback-section .tip {
+  background: var(--kr-yellow);
+  color: var(--kr-contrast);
+  border: none;
+  transform: none;
+  box-shadow: none;
+  border-radius: 4px;
+}
+.embed-body .feedback-form {
+  background: var(--kr-base) !important;
+  color: var(--kr-contrast) !important;
+}
+
+/* ============================================
+   EXAMPLES EMBED — gallery layout
+   ============================================ */
+.examples-embed {
+  font-family: "Manrope", system-ui, sans-serif;
+  color: var(--kr-contrast);
+}
+.examples-head {
+  margin-bottom: 24px;
+}
+.examples-head h2 {
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+  color: var(--kr-contrast);
+}
+.examples-head p {
+  color: var(--kr-muted);
+  font-size: 16px;
+  margin: 0;
+  max-width: 60ch;
+}
+.examples-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+@media (max-width: 1000px) { .examples-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 720px)  { .examples-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px)  { .examples-grid { grid-template-columns: 1fr; } }
+
+.example-card {
+  background: var(--kr-base);
+  border: 1px solid var(--kr-line);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.example-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--kr-contrast);
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, .14);
+}
+.example-img {
+  aspect-ratio: 4 / 3;
+  background: var(--kr-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--kr-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--kr-line);
+  overflow: hidden;
+}
+.example-img.has-img { padding: 0; }
+.example-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.example-body { padding: 14px 16px 16px; }
+.example-name {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--kr-contrast);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+.example-meta {
+  font-size: 13px;
+  color: var(--kr-muted);
+}
+.examples-empty {
+  background: var(--kr-cream);
+  border: 1px dashed var(--kr-line);
+  border-radius: 6px;
+  padding: 28px 24px;
+  text-align: center;
+  color: var(--kr-muted);
+}
+.examples-empty strong {
+  display: block;
+  color: var(--kr-contrast);
+  font-size: 17px;
+  margin-bottom: 4px;
+}
+.examples-empty a { color: var(--kr-purple); text-decoration: underline; }
+
+/* ============================================
+   MAP — use the cleaner palette
+   ============================================ */
+.embed-body .area-map.live .leaflet-tile-pane {
+  /* slight tint, way more subtle than the Boken sepia */
+  filter: saturate(.9) contrast(.97);
+}
+.embed-body .area-map.live::after {
+  background: radial-gradient(ellipse at center, rgba(251, 250, 243, 0) 65%, rgba(251, 250, 243, .25) 100%);
+}
+.embed-body .area-map .legend {
+  background: var(--kr-base);
+  border: 1px solid var(--kr-line);
+  font-family: "Manrope", system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 13px;
+  box-shadow: 0 2px 6px -2px rgba(0,0,0,.12);
+}
+.embed-body .leaflet-bar {
+  border: 1px solid var(--kr-line);
+  box-shadow: 0 2px 8px -2px rgba(0,0,0,.15);
+}
+.embed-body .leaflet-bar a {
+  border-bottom-color: var(--kr-line);
+}
+.embed-body .boken-pin.school svg path:first-child { fill: var(--kr-purple); }
+
+/* ============================================
+   FEEDBACK FORM tweaks (embed-only)
+   ============================================ */
+.embed-body .form-choice label {
+  border: 1px solid var(--kr-line);
+  border-radius: 4px;
+}
+.embed-body .form-choice label .check {
+  border: 1px solid var(--kr-contrast);
+}
+.embed-body .form-choice label .check::after {
+  background: var(--kr-purple);
+}
+.embed-body .opplegg-chips span {
+  border: 1px solid var(--kr-line);
+  border-radius: 999px;
+}
+.embed-body .rate-row label {
+  border: 1px solid var(--kr-line);
+}
+.embed-body .form-status.success { background: var(--kr-yellow); border-color: var(--kr-line); }
+.embed-body .form-status.error { background: #ffe2e2; border-color: rgba(207, 46, 46, .3); }
+.embed-body .form-status.loading { background: var(--kr-pink); }
