@@ -4,17 +4,19 @@ import { revalidatePath } from "next/cache";
 import { getSupabaseServer } from "@/lib/supabase/server";
 
 export type SubmitResult =
-  | { ok: true; uploaded: number; supabase: boolean }
+  | {
+      ok: true;
+      uploaded: number;
+      attempted: number;
+      supabase: boolean;
+      uploadErrors?: string[];
+    }
   | { ok: false; error: string };
 
 export async function submitFeedback(formData: FormData): Promise<SubmitResult> {
   const supabase = await getSupabaseServer();
   if (!supabase) {
-    return {
-      ok: true,
-      uploaded: 0,
-      supabase: false,
-    };
+    return { ok: true, uploaded: 0, attempted: 0, supabase: false };
   }
 
   const mode = String(formData.get("form-mode") || "full");
@@ -26,7 +28,19 @@ export async function submitFeedback(formData: FormData): Promise<SubmitResult> 
   const wholeBookRaw = formData.get("whole-book");
   const wholeBook = wholeBookRaw === "on" || wholeBookRaw === "true";
   const opplegg = formData.getAll("opplegg").map(String).filter(Boolean);
-  const files = formData.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  const files = formData
+    .getAll("files")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+
+  console.log("[submitFeedback]", {
+    mode,
+    name,
+    school,
+    opplegg,
+    wholeBook,
+    fileCount: files.length,
+    fileSizes: files.map((f) => `${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)`),
+  });
 
   const { data: feedbackInsert, error: feedbackError } = await supabase
     .from("feedback")
@@ -43,11 +57,13 @@ export async function submitFeedback(formData: FormData): Promise<SubmitResult> 
     .single();
 
   if (feedbackError) {
+    console.error("[submitFeedback] feedback insert failed:", feedbackError);
     return { ok: false, error: `Kunne ikke lagre tilbakemelding: ${feedbackError.message}` };
   }
 
   const feedbackId = feedbackInsert?.id as string | undefined;
   let uploaded = 0;
+  const uploadErrors: string[] = [];
 
   for (const file of files) {
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
@@ -62,6 +78,9 @@ export async function submitFeedback(formData: FormData): Promise<SubmitResult> 
       });
 
     if (uploadError) {
+      const msg = `${file.name}: ${uploadError.message}`;
+      console.error("[submitFeedback] storage upload failed:", msg);
+      uploadErrors.push(msg);
       continue;
     }
 
@@ -77,7 +96,12 @@ export async function submitFeedback(formData: FormData): Promise<SubmitResult> 
         original_name: file.name,
         whole_book: wholeBook,
       });
-      if (!rowError) uploaded += 1;
+      if (rowError) {
+        console.error("[submitFeedback] examples insert failed:", rowError);
+        uploadErrors.push(`${file.name} (DB row): ${rowError.message}`);
+      } else {
+        uploaded += 1;
+      }
     }
   }
 
@@ -86,5 +110,11 @@ export async function submitFeedback(formData: FormData): Promise<SubmitResult> 
     revalidatePath(`/${tag === "naturfag" ? "naturfag-ute" : tag}`);
   }
 
-  return { ok: true, uploaded, supabase: true };
+  return {
+    ok: true,
+    uploaded,
+    attempted: files.length,
+    supabase: true,
+    uploadErrors: uploadErrors.length > 0 ? uploadErrors : undefined,
+  };
 }

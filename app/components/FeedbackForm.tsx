@@ -60,10 +60,22 @@ export function FeedbackForm() {
             "Takk! (Supabase ikke konfigurert i dette miljøet — innholdet ditt ble ikke lagret, men skjemaet virker.)",
         });
       } else if (result.uploaded > 0) {
+        const note =
+          result.attempted > result.uploaded
+            ? ` (${result.attempted - result.uploaded} bilde feilet — sjekk konsollen)`
+            : "";
         setStatus({
           kind: "success",
-          message: `Takk! Vi har lagret tilbakemeldingen og ${result.uploaded} bilde${result.uploaded === 1 ? "" : "r"}.`,
+          message: `Takk! Vi har lagret tilbakemeldingen og ${result.uploaded} bilde${result.uploaded === 1 ? "" : "r"}${note}.`,
         });
+      } else if (result.attempted > 0) {
+        // Files were attempted but none uploaded — show the real error
+        const errs = result.uploadErrors?.join("; ") ?? "ukjent feil";
+        setStatus({
+          kind: "error",
+          message: `Tilbakemeldingen ble lagret, men ingen av ${result.attempted} bildene ble lastet opp: ${errs}`,
+        });
+        return;
       } else {
         setStatus({ kind: "success", message: "Takk for tilbakemeldingen!" });
       }
