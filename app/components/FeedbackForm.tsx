@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { submitFeedback, type SubmitResult } from "../actions";
+import { createFeedback, attachExample } from "../actions";
+import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 type Preview = { file: File; url: string };
 
@@ -42,47 +43,135 @@ export function FeedbackForm() {
     e.preventDefault();
     const form = e.currentTarget;
     const fd = new FormData(form);
-    // ensure files come from our previews list (filtered to images)
-    fd.delete("files");
-    for (const p of previews) fd.append("files", p.file);
+
+    const input = {
+      mode: (String(fd.get("form-mode") || "full")) as "full" | "upload",
+      name: String(fd.get("name") || "").trim(),
+      school: String(fd.get("school") || "").trim(),
+      rate: fd.get("rate") ? Number(fd.get("rate")) : null,
+      notes: String(fd.get("notes") || "").trim(),
+      opplegg: fd.getAll("opplegg").map(String).filter(Boolean),
+      wholeBook: fd.get("whole-book") === "on" || fd.get("whole-book") === "true",
+    };
 
     setStatus({ kind: "loading", message: "Sender inn …" });
+
     try {
-      const result: SubmitResult = await submitFeedback(fd);
-      if (!result.ok) {
-        setStatus({ kind: "error", message: result.error });
+      // Step 1: insert the feedback row. Always fast — no files involved.
+      const feedbackRes = await createFeedback(input);
+      if (!feedbackRes.ok) {
+        setStatus({
+          kind: "error",
+          message: `Kunne ikke lagre tilbakemelding: ${feedbackRes.error}`,
+        });
         return;
       }
-      if (!result.supabase) {
+
+      if (!feedbackRes.supabase) {
         setStatus({
           kind: "success",
           message:
             "Takk! (Supabase ikke konfigurert i dette miljøet — innholdet ditt ble ikke lagret, men skjemaet virker.)",
         });
-      } else if (result.uploaded > 0) {
-        const note =
-          result.attempted > result.uploaded
-            ? ` (${result.attempted - result.uploaded} bilde feilet — sjekk konsollen)`
-            : "";
+        form.reset();
+        setPreviews([]);
+        setMode("full");
+        return;
+      }
+
+      const feedbackId = feedbackRes.feedbackId;
+      const filesToUpload = previews.length;
+
+      // Step 2: upload files directly from the browser to Supabase Storage.
+      // Bypasses the Vercel Server Action body limit entirely.
+      let uploaded = 0;
+      const uploadErrors: string[] = [];
+
+      if (filesToUpload > 0 && feedbackId && isSupabaseConfigured()) {
+        const sb = getSupabaseClient();
+        if (!sb) {
+          setStatus({
+            kind: "error",
+            message: "Supabase-klient ikke tilgjengelig. Last siden på nytt.",
+          });
+          return;
+        }
+
+        setStatus({
+          kind: "loading",
+          message: `Laster opp ${filesToUpload} bilde${filesToUpload === 1 ? "" : "r"} …`,
+        });
+
+        for (let i = 0; i < previews.length; i++) {
+          const file = previews[i].file;
+          const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+          const safeName = `${crypto.randomUUID()}.${ext}`;
+          const path = `${new Date().toISOString().slice(0, 7)}/${safeName}`;
+
+          setStatus({
+            kind: "loading",
+            message: `Laster opp bilde ${i + 1} av ${filesToUpload} (${(file.size / 1024 / 1024).toFixed(1)} MB) …`,
+          });
+
+          const { error: upErr } = await sb.storage
+            .from("examples")
+            .upload(path, file, {
+              contentType: file.type || "application/octet-stream",
+              upsert: false,
+            });
+
+          if (upErr) {
+            console.error("[upload]", file.name, upErr);
+            uploadErrors.push(`${file.name}: ${upErr.message}`);
+            continue;
+          }
+
+          const { data: publicData } = sb.storage.from("examples").getPublicUrl(path);
+          const url = publicData.publicUrl;
+
+          // Step 3: stamp the example rows (one per opplegg tag) via server action.
+          const attachRes = await attachExample({
+            feedbackId,
+            opplegg: input.opplegg,
+            url,
+            storagePath: path,
+            originalName: file.name,
+            wholeBook: input.wholeBook,
+          });
+          if (attachRes.ok) {
+            uploaded += attachRes.inserted > 0 ? 1 : 0;
+          } else {
+            uploadErrors.push(`${file.name} (lagring i database): ${attachRes.error}`);
+          }
+        }
+      }
+
+      // Final status
+      if (filesToUpload === 0) {
+        setStatus({ kind: "success", message: "Takk for tilbakemeldingen!" });
+      } else if (uploaded === filesToUpload) {
         setStatus({
           kind: "success",
-          message: `Takk! Vi har lagret tilbakemeldingen og ${result.uploaded} bilde${result.uploaded === 1 ? "" : "r"}${note}.`,
+          message: `Takk! Vi har lagret tilbakemeldingen og ${uploaded} bilde${uploaded === 1 ? "" : "r"}.`,
         });
-      } else if (result.attempted > 0) {
-        // Files were attempted but none uploaded — show the real error
-        const errs = result.uploadErrors?.join("; ") ?? "ukjent feil";
+      } else if (uploaded > 0) {
+        setStatus({
+          kind: "success",
+          message: `Takk! ${uploaded} av ${filesToUpload} bilder ble lagret. ${uploadErrors.length > 0 ? "Feil: " + uploadErrors.join("; ") : ""}`,
+        });
+      } else {
         setStatus({
           kind: "error",
-          message: `Tilbakemeldingen ble lagret, men ingen av ${result.attempted} bildene ble lastet opp: ${errs}`,
+          message: `Tilbakemeldingen ble lagret, men ingen av ${filesToUpload} bildene ble lastet opp. ${uploadErrors.join("; ")}`,
         });
         return;
-      } else {
-        setStatus({ kind: "success", message: "Takk for tilbakemeldingen!" });
       }
+
       form.reset();
       setPreviews([]);
       setMode("full");
     } catch (err) {
+      console.error("[FeedbackForm] submit error:", err);
       setStatus({
         kind: "error",
         message: err instanceof Error ? err.message : "Noe gikk galt.",
@@ -216,7 +305,7 @@ export function FeedbackForm() {
             style={{ cursor: "pointer", display: "block" }}
           >
             <strong>Dra og slipp bilder her</strong>
-            eller klikk for å velge filer · JPG/PNG, maks 10 MB
+            eller klikk for å velge filer · JPG/PNG, opptil ca. 50 MB pr fil
             <input
               id="files-input"
               type="file"
@@ -261,6 +350,9 @@ export function FeedbackForm() {
       </button>
       {status && status.kind !== "loading" && (
         <div className={`form-status ${status.kind}`}>{status.message}</div>
+      )}
+      {status?.kind === "loading" && (
+        <div className="form-status loading">{status.message}</div>
       )}
     </form>
   );
