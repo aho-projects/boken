@@ -141,22 +141,27 @@ export function AreaMap() {
       // with a plain text credit.
       map.attributionControl.setPrefix("<a href=\"https://leafletjs.com\" title=\"Leaflet\">Leaflet</a>");
 
-      // Stamen Watercolor — hand-painted aesthetic, free via Stadia Maps.
-      const apiSuffix = process.env.NEXT_PUBLIC_STADIA_API_KEY
-        ? `?api_key=${process.env.NEXT_PUBLIC_STADIA_API_KEY}`
-        : "";
-      L.tileLayer(`https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg${apiSuffix}`, {
-        attribution: "Map: © <a href=\"https://stadiamaps.com/\">Stadia Maps</a> · © <a href=\"https://stamen.com\">Stamen</a> · © <a href=\"https://openstreetmap.org/copyright\">OpenStreetMap</a>",
-        maxZoom: 16,
-        minZoom: 1,
-      }).addTo(map);
-      // Toner-lite label overlay so place names stay legible on the painted tiles
-      L.tileLayer(`https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png${apiSuffix}`, {
-        attribution: "",
-        maxZoom: 16,
-        opacity: 0.75,
-        pane: "overlayPane",
-      }).addTo(map);
+      // Tile choice: if a Stadia Maps API key is set, use Stamen Watercolor (hand-painted look);
+      // otherwise fall back to CARTO Voyager (clean, modern, no key required, works on any domain).
+      const stadiaKey = process.env.NEXT_PUBLIC_STADIA_API_KEY;
+      if (stadiaKey) {
+        L.tileLayer(`https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg?api_key=${stadiaKey}`, {
+          attribution: "Map: © <a href=\"https://stadiamaps.com/\">Stadia Maps</a> · © <a href=\"https://stamen.com\">Stamen</a> · © <a href=\"https://openstreetmap.org/copyright\">OpenStreetMap</a>",
+          maxZoom: 16,
+          minZoom: 1,
+        }).addTo(map);
+        L.tileLayer(`https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}{r}.png?api_key=${stadiaKey}`, {
+          attribution: "",
+          maxZoom: 16,
+          opacity: 0.75,
+        }).addTo(map);
+      } else {
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+          attribution: "© <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> · © <a href=\"https://carto.com/attributions\">CARTO</a>",
+          maxZoom: 19,
+          subdomains: "abcd",
+        }).addTo(map);
+      }
 
       spotsLayerRef.current = L.layerGroup().addTo(map);
       leafletMapRef.current = map;
