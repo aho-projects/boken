@@ -24,7 +24,7 @@ const sourceDir = resolve(projectRoot, "..", "boken"); // ../boken
 const outDir = resolve(projectRoot, "wp-snippets");
 mkdirSync(outDir, { recursive: true });
 
-const BOKEN_HOST_PLACEHOLDER = "https://boken-live.vercel.app";
+const BOKEN_HOST_PLACEHOLDER = "https://boken-kappa.vercel.app";
 
 const RESIZE_SCRIPT = `<script>
 (function () {
@@ -155,6 +155,50 @@ function injectFeedbackForm(body) {
   );
 }
 
+/** Replace the per-opplegg <eksempler-students-section> with an iframe. */
+function makeExamplesInjector(oppleggId) {
+  return function injectExamples(body) {
+    const iframeBlock = `<section class="eksempler-students-section">
+  <iframe
+    src="${BOKEN_HOST_PLACEHOLDER}/embed/examples?opplegg=${oppleggId}"
+    title="Eksempler fra elever — ${oppleggId}"
+    style="width:100%; min-height:520px; border:0; background:transparent;"
+    loading="lazy"
+    scrolling="no"
+  ></iframe>
+</section>`;
+    if (/<section class="eksempler-students-section"/i.test(body)) {
+      return body.replace(
+        /<section class="eksempler-students-section"[\s\S]*?<\/section>/i,
+        iframeBlock,
+      );
+    }
+    // Fallback: insert before the continue row
+    if (/<div class="continue"/.test(body)) {
+      return body.replace(/(<div class="continue")/i, `${iframeBlock}\n$1`);
+    }
+    return body;
+  };
+}
+
+/** Replace the homepage examples grid with the cross-section iframe. */
+function injectHomeExamples(body) {
+  return body.replace(
+    /<section class="home-eksempler-section"[\s\S]*?<\/section>/i,
+    `<section class="home-eksempler-section">
+  <div class="home-eksempler-inner">
+    <iframe
+      src="${BOKEN_HOST_PLACEHOLDER}/embed/examples"
+      title="Eksempler fra lærere"
+      style="width:100%; min-height:560px; border:0; background:transparent;"
+      loading="lazy"
+      scrolling="no"
+    ></iframe>
+  </div>
+</section>`,
+  );
+}
+
 /** Make a grupper.html snippet from scratch (no source file for this page). */
 function buildGrupperSnippet(sharedStyles) {
   return `${PRE_BANNER}${sharedStyles}
@@ -182,14 +226,26 @@ ${RESIZE_SCRIPT}
 }
 
 const tasks = [
-  { src: "index.html", out: "home.html", transforms: [injectFeedbackForm] },
-  { src: "naturfag-ute.html", out: "naturfag-ute.html", transforms: [injectNaturfagMap] },
-  { src: "ut-og-titte.html", out: "ut-og-titte.html", transforms: [injectUtOgTitteMap] },
-  { src: "sketchnoting.html", out: "sketchnoting.html", transforms: [] },
-  { src: "isberg.html", out: "isberg.html", transforms: [] },
-  { src: "bytte-perspektiv.html", out: "bytte-perspektiv.html", transforms: [] },
-  { src: "hjemmelagde-kilden.html", out: "hjemmelagde-kilden.html", transforms: [] },
-  { src: "hvordan-lage-boka.html", out: "hvordan-lage-boka.html", transforms: [] },
+  // Homepage: feedback form iframe at bottom + cross-section examples gallery
+  { src: "index.html", out: "home.html",
+    transforms: [injectFeedbackForm, injectHomeExamples] },
+  // Naturfag: live map + naturfag-filtered examples
+  { src: "naturfag-ute.html", out: "naturfag-ute.html",
+    transforms: [injectNaturfagMap, makeExamplesInjector("naturfag")] },
+  // Ut og titte: radius map + filtered examples
+  { src: "ut-og-titte.html", out: "ut-og-titte.html",
+    transforms: [injectUtOgTitteMap, makeExamplesInjector("ut-og-titte")] },
+  // Pure static opplegg pages — just swap the examples grid for the iframe
+  { src: "sketchnoting.html", out: "sketchnoting.html",
+    transforms: [makeExamplesInjector("sketchnoting")] },
+  { src: "isberg.html", out: "isberg.html",
+    transforms: [makeExamplesInjector("isberg")] },
+  { src: "bytte-perspektiv.html", out: "bytte-perspektiv.html",
+    transforms: [makeExamplesInjector("bytte-perspektiv")] },
+  { src: "hjemmelagde-kilden.html", out: "hjemmelagde-kilden.html",
+    transforms: [makeExamplesInjector("hjemmelagde-kilden")] },
+  { src: "hvordan-lage-boka.html", out: "hvordan-lage-boka.html",
+    transforms: [] },
 ];
 
 const sharedStyles = readSharedStyles();
