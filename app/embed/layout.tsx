@@ -1,22 +1,23 @@
 import type { Metadata } from "next";
-import { Manrope, Cabin } from "next/font/google";
+import { Cabin, Caveat } from "next/font/google";
 import "../globals.css";
 import "./embed.css";
 import { EmbedResize } from "./EmbedResize";
 
-// Manrope matches the WordPress Twenty Twenty-Five theme on kasserommet.no,
-// so the embedded iframes blend into the WP page seamlessly.
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-manrope",
-  display: "swap",
-});
-// Cabin kept as fallback for any inline `var(--font-cabin)` references in shared CSS.
+// Cabin = body type (matches the public Boken site).
 const cabin = Cabin({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-cabin",
+  display: "swap",
+});
+// Caveat = web fallback for Bradley Hand. Bradley Hand only exists on macOS,
+// so we use it when present and fall back to Caveat (similar wavy hand-written
+// vibe) everywhere else.
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-hand",
   display: "swap",
 });
 
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function EmbedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="nb" className={`${manrope.variable} ${cabin.variable}`}>
+    <html lang="nb" className={`${cabin.variable} ${caveat.variable}`}>
       <body className="embed-body">
         <EmbedResize />
         <main className="embed-main">{children}</main>
