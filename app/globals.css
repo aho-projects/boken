@@ -2989,3 +2989,15 @@ a.pdf-tile:hover .tile { box-shadow: 6px 7px 0 var(--ink); }
 .boken-pin.park svg path:first-of-type { fill: #9DC489; }
 .boken-pin.skog svg path:first-of-type { fill: #4F7A47; }
 .boken-pin.vann svg path:first-of-type { fill: #84B2C9; }
+
+/* The actual Boken stick-man image used as the user/school marker */
+.boken-stickman {
+  width: 40px;
+  height: 56px;
+  display: block;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(1px 1px 0 rgba(0,0,0,.25));
+  pointer-events: none;
+}
+.boken-pin.is-person { width: 40px; height: 56px; }

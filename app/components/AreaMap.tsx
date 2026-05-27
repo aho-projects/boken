@@ -47,18 +47,11 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-// Hand-drawn-ish stick figure for the user/school marker.
-// Orange body, ink outline, simple face. Approximates the Boken character style.
+// User/school marker = the actual Boken stick-man PNG (saved to public/assets/finn-meg.png).
+// We use <img> so the marker is pixel-perfect with the brand illustration instead
+// of an SVG approximation. Drop the file in /public/assets/ and it'll render.
 const STICK_FIGURE_SVG = `
-  <svg viewBox="0 0 38 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <ellipse cx="19" cy="49.5" rx="9" ry="1.6" fill="#1A1A1A" opacity="0.22"/>
-    <path fill="#FE8247" stroke="#1A1A1A" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"
-          d="M 19 13 L 14 15 Q 10 17 8 23 Q 7 27 6 30 L 9 30 Q 10 27 13 24 L 13 32 L 11 47 L 14 49 L 16 36 L 18 36 L 19 49 L 22 49 L 22 36 L 24 36 L 26 49 L 29 47 L 27 32 L 27 24 Q 30 27 31 30 L 34 30 Q 33 27 32 23 Q 30 17 26 15 Z"/>
-    <circle cx="19" cy="8" r="6.5" fill="#FE8247" stroke="#1A1A1A" stroke-width="1.6"/>
-    <circle cx="16.8" cy="7.5" r="0.95" fill="#1A1A1A"/>
-    <circle cx="21.2" cy="7.5" r="0.95" fill="#1A1A1A"/>
-    <path d="M 16.8 9.8 Q 19 11.2 21.2 9.8" fill="none" stroke="#1A1A1A" stroke-width="1.1" stroke-linecap="round"/>
-  </svg>
+  <img src="/assets/finn-meg.png" alt="" class="boken-stickman" />
 `;
 
 // Classic teardrop pin used for the park/forest/water numbered spots
@@ -80,8 +73,8 @@ function makeDivIcon(L: typeof import("leaflet"), kind: SpotKind | "school" | "y
   `;
   // The stick figure has its "feet" anchor at the bottom-center; the teardrop
   // anchors slightly above its tip so the pin point lands on the location.
-  const size: [number, number] = isPerson ? [38, 52] : [32, 40];
-  const anchor: [number, number] = isPerson ? [19, 50] : [16, 38];
+  const size: [number, number] = isPerson ? [40, 56] : [32, 40];
+  const anchor: [number, number] = isPerson ? [20, 54] : [16, 38];
   return L.divIcon({
     className: "boken-pin-wrap",
     html,
