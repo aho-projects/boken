@@ -426,7 +426,12 @@ export function AreaMap() {
       const timer = setTimeout(() => ctrl.abort(), 10_000);
       return fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          // overpass-api.de returns 406 Not Acceptable without an explicit
+          // Accept header — browsers don't send one by default.
+          "Accept": "application/json",
+        },
         body: `data=${encodeURIComponent(query)}`,
         signal: ctrl.signal,
       })
