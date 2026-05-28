@@ -400,15 +400,10 @@ export function AreaMap() {
       );
       out center 60;
     `;
-    // Race 4 public Overpass instances in parallel — take whichever responds first.
-    // Each has a 10s timeout via AbortController so a hung endpoint can't block.
-    const overpassEndpoints = [
-      "https://overpass-api.de/api/interpreter",
-      "https://overpass.kumi.systems/api/interpreter",
-      "https://overpass.private.coffee/api/interpreter",
-      "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
-    ];
-
+    // Call our server-side proxy at /api/spots — it queries Overpass for us
+    // with proper User-Agent + Accept headers. Browsers can't talk to
+    // overpass-api.de directly because it rejects requests with an Origin
+    // header (returns 406). Going through our own function fixes that.
     type OverpassResp = {
       elements: Array<{
         id: number;
@@ -420,44 +415,25 @@ export function AreaMap() {
       }>;
     };
 
-    const controllers = overpassEndpoints.map(() => new AbortController());
-    const requests = overpassEndpoints.map((endpoint, i) => {
-      const ctrl = controllers[i];
-      const timer = setTimeout(() => ctrl.abort(), 10_000);
-      return fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          // overpass-api.de returns 406 Not Acceptable without an explicit
-          // Accept header — browsers don't send one by default.
-          "Accept": "application/json",
-        },
-        body: `data=${encodeURIComponent(query)}`,
-        signal: ctrl.signal,
-      })
-        .then(async (res) => {
-          clearTimeout(timer);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          return res.json() as Promise<OverpassResp>;
-        })
-        .catch((e) => {
-          clearTimeout(timer);
-          console.warn(`[overpass] ${endpoint} failed:`, e);
-          throw e;
-        });
-    });
-
     let data: OverpassResp | null = null;
     try {
-      data = await Promise.any(requests);
-      // Cancel the losers as soon as we have a winner.
-      controllers.forEach((c) => { try { c.abort(); } catch { /* ignore */ } });
-    } catch {
-      // All 4 failed (or were aborted) — fall through to error handling.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 15_000);
+      // /api/spots is on the same Vercel deploy as this embed — works
+      // from inside the iframe regardless of the host page domain.
+      const res = await fetch(
+        `/api/spots?lat=${lat}&lng=${lng}&r=${radiusMeters}`,
+        { signal: ctrl.signal },
+      );
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      data = (await res.json()) as OverpassResp;
+    } catch (e) {
+      console.warn("[spots] proxy call failed:", e);
     }
 
     try {
-      if (!data) throw new Error("Alle 4 Overpass-tjenere svarte ikke. Prøv igjen om litt.");
+      if (!data) throw new Error("Klarte ikke å hente områder akkurat nå. Prøv igjen om litt.");
 
       const found: Spot[] = [];
       for (const el of data.elements ?? []) {
