@@ -44,14 +44,18 @@ export function FeedbackForm() {
     const form = e.currentTarget;
     const fd = new FormData(form);
 
+    // "Last opp bok" mode = full book photo. "Del erfaring + bilder" = single
+    // pages / general uploads. This replaces the explicit "Jeg har hengt hele
+    // boka opp" checkbox — simpler UI, same outcome.
+    const formMode = (String(fd.get("form-mode") || "full")) as "full" | "upload";
     const input = {
-      mode: (String(fd.get("form-mode") || "full")) as "full" | "upload",
+      mode: formMode,
       name: String(fd.get("name") || "").trim(),
       school: String(fd.get("school") || "").trim(),
       rate: fd.get("rate") ? Number(fd.get("rate")) : null,
       notes: String(fd.get("notes") || "").trim(),
       opplegg: fd.getAll("opplegg").map(String).filter(Boolean),
-      wholeBook: fd.get("whole-book") === "on" || fd.get("whole-book") === "true",
+      wholeBook: formMode === "upload",
     };
 
     setStatus({ kind: "loading", message: "Sender inn …" });
@@ -332,13 +336,6 @@ export function FeedbackForm() {
               ))}
             </div>
           )}
-          <label className="upload-option" style={{ marginTop: 14 }}>
-            <input type="checkbox" name="whole-book" />
-            <span>
-              <strong>Jeg har hengt hele boka opp og tatt fullbilde</strong>
-              <span>(da blir hele oppslaget vist på samme kort)</span>
-            </span>
-          </label>
         </div>
       </div>
       <button type="submit" disabled={status?.kind === "loading"}>

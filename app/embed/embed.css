@@ -203,6 +203,18 @@
 .embed-body .opplegg-chips input[type="checkbox"]:checked + span::before {
   color: var(--orange) !important;
 }
+/* Rate boxes: orange should fill the WHOLE box, not just the inner span */
+.embed-body .rate-row label {
+  padding: 0 !important;
+  overflow: hidden;
+}
+.embed-body .rate-row label > span {
+  display: block !important;
+  padding: 18px 0 !important;
+  width: 100%;
+  text-align: center;
+  transition: background .12s, color .12s;
+}
 .embed-body .rate-row input:checked + span {
   background: var(--orange) !important;
   color: #fff !important;
@@ -279,7 +291,7 @@
 .embed-body .feedback-form {
   background: #fff !important;
   color: var(--ink) !important;
-  border: 1px solid var(--line) !important;
+  border: 0 !important;
   border-radius: 4px;
   box-shadow: var(--soft-shadow) !important;
   padding: 28px !important;
