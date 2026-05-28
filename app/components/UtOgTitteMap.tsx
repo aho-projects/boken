@@ -214,95 +214,32 @@ export function UtOgTitteMap() {
       </div>
 
       {/*
-        Print-only feltkort. Hidden on screen, shown only when window.print() runs.
-        Layout designed for A4 with the live map at the top + 3 "briller" sections
-        for the Natur / Samfunn / Språk lenses described in the WP opplegg.
+        Print-only feltkort. A4 LANDSCAPE — folds in half vertically.
+        Left half: the map (captured PNG snapshot).
+        Right half: "Hva så du?" title + writing space.
+        Designed to be folded once and slipped into the student's notebook.
       */}
       <aside className="uot-print-sheet" aria-hidden="true">
-        <header className="uot-ps-head">
-          <div className="uot-ps-brand">
-            <strong>BOKEN</strong>
-            <span>Feltkort · Ut og titte</span>
-          </div>
-          <div className="uot-ps-meta">
-            <div className="uot-ps-line"><span>Navn:</span><i /></div>
-            <div className="uot-ps-line"><span>Klasse:</span><i /></div>
-            <div className="uot-ps-line"><span>Dato:</span><i>{today}</i></div>
-          </div>
-        </header>
-
-        <section className="uot-ps-intro">
-          <h2>Tre briller — samme sted, tre ganger</h2>
-          <p>
-            Gå rundt i området på kartet — opp til <strong>{radius} meter</strong> fra
-            startpunktet. Se etter ting med <em>tre forskjellige briller</em>. Tegn det
-            fineste i boka.
-          </p>
-        </section>
-
-        <section className="uot-ps-map">
-          <div className="uot-ps-map-frame">
-            <span className="uot-ps-map-cap">Området ditt</span>
-            <div className="uot-ps-map-live">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img alt="Snapshot av området" />
+        <div className="uot-ps-fold">
+          <div className="uot-ps-left">
+            <div className="uot-ps-map-frame">
+              <span className="uot-ps-map-cap">Området ditt · ~{radius} m radius</span>
+              <div className="uot-ps-map-live">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img alt="Snapshot av området" />
+              </div>
             </div>
           </div>
-          <p className="uot-ps-radius-note">Radius: ~{radius} meter rundt utgangspunktet</p>
-        </section>
-
-        <section className="uot-ps-lenses">
-          <div className="uot-ps-lens natur">
-            <h3>👓 Naturbrille</h3>
-            <p className="uot-ps-lens-sub">Se etter alt levende</p>
-            <ul>
-              <li>Et tre eller en busk</li>
-              <li>En blomst, en plante, mose</li>
-              <li>En fugl, en insekt, et dyrespor</li>
-              <li>Vann — dam, bekk eller en pytt</li>
-              <li>En interessant stein eller bark</li>
-              <li>____________________________</li>
-              <li>____________________________</li>
-            </ul>
+          <div className="uot-ps-right">
+            <h2>Hva så du?</h2>
+            <div className="uot-ps-lines">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <span className="uot-ps-line" key={i} />
+              ))}
+            </div>
+            <div className="uot-ps-credit">Boken · KasseRommet</div>
           </div>
-
-          <div className="uot-ps-lens samfunn">
-            <h3>👓 Samfunnsbrille</h3>
-            <p className="uot-ps-lens-sub">Se etter alt menneskelaget</p>
-            <ul>
-              <li>Et hus eller en bygning</li>
-              <li>En benk, en lyktestolpe</li>
-              <li>En bil, en sykkel</li>
-              <li>En søppelkasse, en mur</li>
-              <li>En lekeplass, en byggeplass</li>
-              <li>____________________________</li>
-              <li>____________________________</li>
-            </ul>
-          </div>
-
-          <div className="uot-ps-lens sprak">
-            <h3>👓 Språkbrille</h3>
-            <p className="uot-ps-lens-sub">Se etter all tekst</p>
-            <ul>
-              <li>Et skilt — gate, buss, info</li>
-              <li>En klistremerke eller tagging</li>
-              <li>Reklame, en logo</li>
-              <li>Et menneske som snakker</li>
-              <li>Skjønnskrift / håndskrift</li>
-              <li>____________________________</li>
-              <li>____________________________</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="uot-ps-footer">
-          <div>
-            <strong>Utstyr du trenger:</strong> Boken · blyant · fargeblyanter · telefon hvis dere har
-          </div>
-          <div className="uot-ps-credit">
-            Boken — KasseRommet · kasserommet.no/08-gruppe
-          </div>
-        </section>
+        </div>
       </aside>
     </div>
   );
