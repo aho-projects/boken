@@ -400,9 +400,8 @@ export function AreaMap() {
       );
       out center 60;
     `;
-    // Public Overpass instances — try them in order, take the first that works.
-    // The main instance (overpass-api.de) is frequently overloaded so we keep
-    // a couple of community-run mirrors as fallbacks.
+    // Race 4 public Overpass instances in parallel — take whichever responds first.
+    // Each has a 10s timeout via AbortController so a hung endpoint can't block.
     const overpassEndpoints = [
       "https://overpass-api.de/api/interpreter",
       "https://overpass.kumi.systems/api/interpreter",
@@ -421,25 +420,39 @@ export function AreaMap() {
       }>;
     };
 
-    let data: OverpassResp | null = null;
-    let lastErr: unknown = null;
-    for (const endpoint of overpassEndpoints) {
-      try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `data=${encodeURIComponent(query)}`,
+    const controllers = overpassEndpoints.map(() => new AbortController());
+    const requests = overpassEndpoints.map((endpoint, i) => {
+      const ctrl = controllers[i];
+      const timer = setTimeout(() => ctrl.abort(), 10_000);
+      return fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `data=${encodeURIComponent(query)}`,
+        signal: ctrl.signal,
+      })
+        .then(async (res) => {
+          clearTimeout(timer);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          return res.json() as Promise<OverpassResp>;
+        })
+        .catch((e) => {
+          clearTimeout(timer);
+          console.warn(`[overpass] ${endpoint} failed:`, e);
+          throw e;
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        data = (await res.json()) as OverpassResp;
-        break;
-      } catch (e) {
-        lastErr = e;
-        console.warn(`[overpass] ${endpoint} failed:`, e);
-      }
-    }
+    });
+
+    let data: OverpassResp | null = null;
     try {
-      if (!data) throw lastErr ?? new Error("alle Overpass-tjenere svarte ikke");
+      data = await Promise.any(requests);
+      // Cancel the losers as soon as we have a winner.
+      controllers.forEach((c) => { try { c.abort(); } catch { /* ignore */ } });
+    } catch {
+      // All 4 failed (or were aborted) — fall through to error handling.
+    }
+
+    try {
+      if (!data) throw new Error("Alle 4 Overpass-tjenere svarte ikke. Prøv igjen om litt.");
 
       const found: Spot[] = [];
       for (const el of data.elements ?? []) {
