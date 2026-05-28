@@ -12,6 +12,7 @@ type ExampleRow = {
   opplegg: string | null;
   original_name: string | null;
   whole_book: boolean | null;
+  storage_path: string | null;
   created_at: string | null;
   feedback?: { name: string | null; school: string | null } | null;
 };
@@ -48,15 +49,31 @@ export default async function EmbedExamples({
 
   let rows: ExampleRow[] = [];
   if (supabase) {
+    // When showing the main "fulle bøker" gallery we may receive multiple rows
+    // for the same uploaded file (one per opplegg tag), so fetch a few extra
+    // rows here and de-duplicate by storage_path in JS below.
+    const fetchLimit = fullBooksOnly && !oppleggFilter ? limit * 6 : limit;
     let query = supabase
       .from("examples")
-      .select("id, url, opplegg, original_name, whole_book, created_at, feedback:feedback_id(name, school)")
+      .select("id, url, opplegg, original_name, whole_book, storage_path, created_at, feedback:feedback_id(name, school)")
       .order("created_at", { ascending: false })
-      .limit(limit);
+      .limit(fetchLimit);
     if (oppleggFilter) query = query.eq("opplegg", oppleggFilter);
     if (fullBooksOnly) query = query.eq("whole_book", true);
     const { data, error } = await query;
     if (!error && data) rows = data as unknown as ExampleRow[];
+  }
+
+  // Dedupe by storage_path on the main "fulle bøker" gallery so a book that
+  // was tagged with multiple opplegg only appears as one card.
+  if (fullBooksOnly && !oppleggFilter) {
+    const seen = new Set<string>();
+    rows = rows.filter((r) => {
+      const key = r.storage_path ?? r.url ?? r.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, limit);
   }
 
   const title = oppleggFilter

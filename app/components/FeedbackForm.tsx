@@ -20,11 +20,32 @@ export function FeedbackForm() {
     };
   }, [previews]);
 
-  const handleFiles = (files: FileList | null) => {
+  // iPhone photos default to HEIC, which browsers other than Safari can't
+  // display. Convert HEIC → JPEG client-side before upload so the gallery
+  // shows actual images everywhere.
+  async function normalizeFile(f: File): Promise<File> {
+    const isHeic =
+      /\.(heic|heif)$/i.test(f.name) ||
+      f.type === "image/heic" ||
+      f.type === "image/heif";
+    if (!isHeic) return f;
+    try {
+      const heic2any = (await import("heic2any")).default;
+      const blob = (await heic2any({ blob: f, toType: "image/jpeg", quality: 0.85 })) as Blob;
+      const newName = f.name.replace(/\.(heic|heif)$/i, "") + ".jpg";
+      return new File([blob], newName, { type: "image/jpeg" });
+    } catch (err) {
+      console.warn("[heic→jpeg] conversion failed, falling back to original file:", err);
+      return f;
+    }
+  }
+
+  const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const next: Preview[] = [];
-    for (const f of Array.from(files)) {
-      if (!f.type.startsWith("image/")) continue;
+    for (const raw of Array.from(files)) {
+      if (!raw.type.startsWith("image/") && !/\.(heic|heif)$/i.test(raw.name)) continue;
+      const f = await normalizeFile(raw);
       next.push({ file: f, url: URL.createObjectURL(f) });
     }
     setPreviews((prev) => [...prev, ...next]);
@@ -314,7 +335,7 @@ export function FeedbackForm() {
               id="files-input"
               type="file"
               name="files"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               multiple
               style={{ display: "none" }}
               onChange={(e) => handleFiles(e.currentTarget.files)}
