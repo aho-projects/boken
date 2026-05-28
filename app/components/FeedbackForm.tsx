@@ -22,33 +22,75 @@ export function FeedbackForm() {
 
   // iPhone photos default to HEIC, which browsers other than Safari can't
   // display. Convert HEIC → JPEG client-side before upload so the gallery
-  // shows actual images everywhere.
+  // shows real images everywhere. We use heic-to (actively maintained libheif
+  // wrapper) — heic2any v0.0.4 turned out to be unreliable in production.
   async function normalizeFile(f: File): Promise<File> {
     const isHeic =
       /\.(heic|heif)$/i.test(f.name) ||
       f.type === "image/heic" ||
-      f.type === "image/heif";
+      f.type === "image/heif" ||
+      // iPhone Safari often sets type to "" or "application/octet-stream" for HEIC
+      (f.type === "" && /\.(heic|heif)$/i.test(f.name));
     if (!isHeic) return f;
+
+    console.log("[heic→jpeg] starting conversion of", f.name, "(", (f.size / 1024 / 1024).toFixed(2), "MB)");
     try {
-      const heic2any = (await import("heic2any")).default;
-      const blob = (await heic2any({ blob: f, toType: "image/jpeg", quality: 0.85 })) as Blob;
+      const { heicTo, isHeic: checkHeic } = await import("heic-to");
+      // double-check it's actually HEIC bytes
+      try {
+        const actuallyHeic = await checkHeic(f);
+        if (!actuallyHeic) {
+          console.log("[heic→jpeg] file looked like HEIC by name/type but bytes say otherwise — using as-is");
+          return f;
+        }
+      } catch {
+        /* If the check throws, just try to convert anyway */
+      }
+      const converted = await heicTo({
+        blob: f,
+        type: "image/jpeg",
+        quality: 0.85,
+      });
       const newName = f.name.replace(/\.(heic|heif)$/i, "") + ".jpg";
-      return new File([blob], newName, { type: "image/jpeg" });
+      const out = new File([converted], newName, { type: "image/jpeg" });
+      console.log("[heic→jpeg] converted to", out.name, "(", (out.size / 1024 / 1024).toFixed(2), "MB)");
+      return out;
     } catch (err) {
-      console.warn("[heic→jpeg] conversion failed, falling back to original file:", err);
-      return f;
+      console.error("[heic→jpeg] conversion FAILED, falling back to original HEIC file:", err);
+      // Re-throw so handleFiles can show a user-visible error
+      throw err instanceof Error ? err : new Error(String(err));
     }
   }
 
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const next: Preview[] = [];
+    const errors: string[] = [];
+    // If any are HEIC, show a "Konverterer …" status while we work
+    const hasHeic = Array.from(files).some(
+      (f) => /\.(heic|heif)$/i.test(f.name) || f.type === "image/heic" || f.type === "image/heif",
+    );
+    if (hasHeic) {
+      setStatus({ kind: "loading", message: "Konverterer iPhone-bilder (HEIC → JPEG) …" });
+    }
     for (const raw of Array.from(files)) {
       if (!raw.type.startsWith("image/") && !/\.(heic|heif)$/i.test(raw.name)) continue;
-      const f = await normalizeFile(raw);
-      next.push({ file: f, url: URL.createObjectURL(f) });
+      try {
+        const f = await normalizeFile(raw);
+        next.push({ file: f, url: URL.createObjectURL(f) });
+      } catch (err) {
+        errors.push(`${raw.name}: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
     setPreviews((prev) => [...prev, ...next]);
+    if (errors.length > 0) {
+      setStatus({
+        kind: "error",
+        message: `Klarte ikke å konvertere ${errors.length} HEIC-bilde${errors.length === 1 ? "" : "r"} — last gjerne opp som JPG fra telefonen din i stedet. Detaljer: ${errors.join("; ")}`,
+      });
+    } else if (hasHeic) {
+      setStatus(null);
+    }
   };
 
   const removePreview = (idx: number) => {
