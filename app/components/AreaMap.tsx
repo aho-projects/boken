@@ -400,13 +400,46 @@ export function AreaMap() {
       );
       out center 60;
     `;
+    // Public Overpass instances — try them in order, take the first that works.
+    // The main instance (overpass-api.de) is frequently overloaded so we keep
+    // a couple of community-run mirrors as fallbacks.
+    const overpassEndpoints = [
+      "https://overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter",
+      "https://overpass.private.coffee/api/interpreter",
+      "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    ];
+
+    type OverpassResp = {
+      elements: Array<{
+        id: number;
+        type: string;
+        lat?: number;
+        lon?: number;
+        center?: { lat: number; lon: number };
+        tags?: Record<string, string>;
+      }>;
+    };
+
+    let data: OverpassResp | null = null;
+    let lastErr: unknown = null;
+    for (const endpoint of overpassEndpoints) {
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `data=${encodeURIComponent(query)}`,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = (await res.json()) as OverpassResp;
+        break;
+      } catch (e) {
+        lastErr = e;
+        console.warn(`[overpass] ${endpoint} failed:`, e);
+      }
+    }
     try {
-      const res = await fetch("https://overpass-api.de/api/interpreter", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `data=${encodeURIComponent(query)}`,
-      });
-      const data = await res.json() as { elements: Array<{ id: number; type: string; lat?: number; lon?: number; center?: { lat: number; lon: number }; tags?: Record<string, string> }> };
+      if (!data) throw lastErr ?? new Error("alle Overpass-tjenere svarte ikke");
 
       const found: Spot[] = [];
       for (const el of data.elements ?? []) {
